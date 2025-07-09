@@ -15,10 +15,11 @@
 
 #include "../core/generation.hpp"
 #include "../core/qmlglobal.hpp"
+#include "../core/reload.hpp"
 #include "datastream.hpp"
 #include "processcore.hpp"
 
-Process::Process(QObject* parent): QObject(parent) {
+Process::Process(QObject* parent): PostReloadHook(parent) {
 	QObject::connect(
 	    QuickshellSettings::instance(),
 	    &QuickshellSettings::workingDirectoryChanged,
@@ -26,6 +27,18 @@ Process::Process(QObject* parent): QObject(parent) {
 	    &Process::onGlobalWorkingDirectoryChanged
 	);
 }
+
+Process::~Process() {
+	if (this->process != nullptr && this->process->processId() != 0) {
+		// Deleting after the process finishes hides the process destroyed warning in logs
+		QObject::connect(this->process, &QProcess::finished, [p = this->process] { delete p; });
+
+		this->process->setParent(nullptr);
+		this->process->kill();
+	}
+}
+
+void Process::onPostReload() { this->startProcessIfReady(); }
 
 bool Process::isRunning() const { return this->process != nullptr; }
 
@@ -165,7 +178,10 @@ void Process::setStdinEnabled(bool enabled) {
 }
 
 void Process::startProcessIfReady() {
-	if (this->process != nullptr || !this->targetRunning || this->mCommand.isEmpty()) return;
+	if (this->process != nullptr || !this->isPostReload || !this->targetRunning
+	    || this->mCommand.isEmpty())
+		return;
+
 	this->targetRunning = false;
 
 	auto& cmd = this->mCommand.first();

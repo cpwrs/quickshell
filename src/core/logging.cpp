@@ -30,17 +30,18 @@
 #include <sys/sendfile.h>
 
 #include "instanceinfo.hpp"
+#include "logcat.hpp"
 #include "logging_p.hpp"
 #include "logging_qtprivate.cpp" // NOLINT
 #include "paths.hpp"
 #include "ringbuf.hpp"
 
-Q_LOGGING_CATEGORY(logBare, "quickshell.bare");
+QS_LOGGING_CATEGORY(logBare, "quickshell.bare");
 
 namespace qs::log {
 using namespace qt_logging_registry;
 
-Q_LOGGING_CATEGORY(logLogging, "quickshell.logging", QtWarningMsg);
+QS_LOGGING_CATEGORY(logLogging, "quickshell.logging", QtWarningMsg);
 
 bool LogMessage::operator==(const LogMessage& other) const {
 	// note: not including time
@@ -182,17 +183,24 @@ void LogManager::filterCategory(QLoggingCategory* category) {
 	auto categoryName = QLatin1StringView(category->categoryName());
 	auto isQs = categoryName.startsWith(QLatin1StringView("quickshell."));
 
-	if (instance->lastCategoryFilter) {
-		instance->lastCategoryFilter(category);
-	}
+	CategoryFilter filter;
 
-	auto filter = CategoryFilter(category);
-
+	// We don't respect log filters for qs logs because some distros like to ship
+	// default configs that hide everything. QT_LOGGING_RULES is considered via the filter list.
 	if (isQs) {
-		filter.debug = filter.debug || instance->mDefaultLevel == QtDebugMsg;
-		filter.info = filter.debug || instance->mDefaultLevel == QtInfoMsg;
-		filter.warn = filter.info || instance->mDefaultLevel == QtWarningMsg;
-		filter.critical = filter.warn || instance->mDefaultLevel == QtCriticalMsg;
+		// QtDebugMsg == 0, so default
+		auto defaultLevel = instance->defaultLevels.value(categoryName);
+
+		filter = CategoryFilter();
+		// clang-format off
+		filter.debug = instance->mDefaultLevel == QtDebugMsg || defaultLevel == QtDebugMsg;
+		filter.info = filter.debug || instance->mDefaultLevel == QtInfoMsg || defaultLevel == QtInfoMsg;
+		filter.warn = filter.info || instance->mDefaultLevel == QtWarningMsg || defaultLevel == QtWarningMsg;
+		filter.critical = filter.warn || instance->mDefaultLevel == QtCriticalMsg || defaultLevel == QtCriticalMsg;
+		// clang-format on
+	} else if (instance->lastCategoryFilter) {
+		instance->lastCategoryFilter(category);
+		filter = CategoryFilter(category);
 	}
 
 	for (const auto& rule: *instance->rules) {
@@ -235,8 +243,12 @@ void LogManager::init(
 
 	{
 		QLoggingSettingsParser parser;
-		parser.setContent(rules);
+		// Load QT_LOGGING_RULES because we ignore the last category filter for QS messages
+		// due to disk config files.
+		parser.setContent(qEnvironmentVariable("QT_LOGGING_RULES"));
 		instance->rules = new QList(parser.rules());
+		parser.setContent(rules);
+		instance->rules->append(parser.rules());
 	}
 
 	qInstallMessageHandler(&LogManager::messageHandler);
@@ -255,6 +267,10 @@ void LogManager::init(
 	);
 
 	qCDebug(logLogging) << "Logger initialized.";
+}
+
+void initLogCategoryLevel(const char* name, QtMsgType defaultLevel) {
+	LogManager::instance()->defaultLevels.insert(QLatin1StringView(name), defaultLevel);
 }
 
 void LogManager::initFs() {
