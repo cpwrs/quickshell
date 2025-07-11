@@ -25,7 +25,3 @@ endif()
 if (SERVICE_NOTIFICATIONS)
 	add_subdirectory(notifications)
 endif()
-
-if (SERVICE_NETWORKMANAGER)
-	add_subdirectory(networkmanager)
-endif()
