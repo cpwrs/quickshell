@@ -15,6 +15,9 @@
 #include "device.hpp"
 #include "nm/dbus_nm_backend.h"
 #include "wireless.hpp"
+#include "wired.hpp"
+
+#include <iostream> // NOLINT std::cout
 
 namespace qs::network {
 
@@ -160,6 +163,7 @@ void NetworkManager::registerDevice(
 NetworkDevice* NetworkManager::createDeviceVariant(NMDeviceType::Enum type, const QString& path) {
 	switch (type) {
 	case NMDeviceType::Wifi: return this->bindWirelessDevice(path);
+	case NMDeviceType::Ethernet: return this->bindWiredDevice(path);
 	default: return new NetworkDevice();
 	}
 }
@@ -202,6 +206,13 @@ NetworkWifiDevice* NetworkManager::bindWirelessDevice(const QString& path) {
 	return device;
 }
 
+NetworkEthernetDevice* NetworkManager::bindWiredDevice(const QString& path) {
+	auto* device = new NetworkEthernetDevice(this);
+	//auto* wiredAdapter = new NMWiredAdapter(path, device);
+	qCDebug(logNetworkManager) << "Wired device path: " << path;
+	return device;
+}
+
 void NetworkManager::onDeviceAdded(const QDBusObjectPath& path) {
 	this->queueDeviceRegistration(path.path());
 }
@@ -223,4 +234,4 @@ void NetworkManager::onDeviceRemoved(const QDBusObjectPath& path) {
 
 bool NetworkManager::isAvailable() const { return this->proxy && this->proxy->isValid(); };
 
-} // namespace qs::network
+} // namespace qs::networ

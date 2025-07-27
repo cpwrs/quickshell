@@ -65,6 +65,8 @@ public:
 		Other = 0,
 		///! An 802.11 Wi-Fi device.
 		Wireless = 1,
+		///! A wired Ethernet device
+		Wired = 2,
 	};
 	Q_ENUM(Enum);
 	Q_INVOKABLE static QString toString(NetworkDeviceType::Enum type);
@@ -178,6 +180,15 @@ private:
 	ObjectModel<WifiNetwork> mNetworks {this};
 
 	Q_OBJECT_BINDABLE_PROPERTY(NetworkWifiDevice, bool, bScanning, &NetworkWifiDevice::scanningChanged);
+};
+
+///! Wired variant of a tracked network device.
+class NetworkEthernetDevice: public NetworkDevice {
+	Q_OBJECT;
+
+public:
+	explicit NetworkEthernetDevice(QObject* parent = nullptr);
+	[[nodiscard]] NetworkDeviceType::Enum type() const override { return NetworkDeviceType::Wired; };
 };
 
 class NetworkBackend: public QObject {

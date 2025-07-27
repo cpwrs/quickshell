@@ -40,6 +40,7 @@ private:
 	void queueDeviceRegistration(const QString& path);
 	NetworkDevice* createDeviceVariant(NMDeviceType::Enum type, const QString& path);
 	NetworkWifiDevice* bindWirelessDevice(const QString& path);
+	NetworkEthernetDevice* bindWiredDevice(const QString& path);
 	NetworkDevice* bindDevice(NMDeviceAdapter* deviceAdapter);
 
 	QHash<QString, NetworkDevice*> mDeviceHash;

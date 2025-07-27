@@ -34,6 +34,7 @@ QString NetworkDeviceType::toString(NetworkDeviceType::Enum type) {
 	switch (type) {
 	case NetworkDeviceType::Other: return QStringLiteral("Other");
 	case NetworkDeviceType::Wireless: return QStringLiteral("Wireless");
+	case NetworkDeviceType::Wired: return QStringLiteral("Wired");
 	default: return QStringLiteral("Unknown");
 	}
 }
@@ -118,6 +119,8 @@ void WifiNetwork::setConnected(bool connected) {
 		emit this->connectedChanged();
 	}
 }
+
+NetworkEthernetDevice::NetworkEthernetDevice(QObject* parent): NetworkDevice(parent) {};
 
 Network::Network(QObject* parent): QObject(parent) {
 	// Try each backend
