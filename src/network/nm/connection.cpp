@@ -14,10 +14,10 @@
 
 #include "../../core/logcat.hpp"
 #include "../../dbus/properties.hpp"
+#include "../connection.hpp"
 #include "../wifi.hpp"
 #include "dbus_nm_active_connection.h"
 #include "dbus_nm_connection_settings.h"
-#include "dbus_types.hpp"
 #include "enums.hpp"
 #include "utils.hpp"
 
@@ -127,7 +127,7 @@ NMActiveConnection::NMActiveConnection(const QString& path, QObject* parent): QO
 }
 
 void NMActiveConnection::onStateChanged(quint32 /*state*/, quint32 reason) {
-	auto enumReason = static_cast<NMConnectionStateReason::Enum>(reason);
+	auto enumReason = static_cast<NMNetworkStateReason::Enum>(reason);
 	if (this->mStateReason == enumReason) return;
 	this->mStateReason = enumReason;
 	emit this->stateReasonChanged(enumReason);

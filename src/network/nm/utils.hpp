@@ -6,8 +6,8 @@
 #include <qqmlintegration.h>
 
 #include "../wifi.hpp"
-#include "dbus_types.hpp"
 #include "enums.hpp"
+#include "types.hpp"
 
 namespace qs::network {
 

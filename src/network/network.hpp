@@ -7,6 +7,7 @@
 #include <qtypes.h>
 
 #include "../core/model.hpp"
+#include "connection.hpp"
 #include "device.hpp"
 
 namespace qs::network {
@@ -27,6 +28,35 @@ public:
 	};
 	Q_ENUM(Enum);
 	Q_INVOKABLE static QString toString(NetworkState::Enum state);
+};
+
+///! The reason for the NMConnectionState of an NMConnection.
+/// In sync with https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActiveConnectionStateReason.
+class NMNetworkStateReason: public QObject {
+	Q_OBJECT;
+	QML_ELEMENT;
+	QML_SINGLETON;
+
+public:
+	enum Enum : quint8 {
+		Unknown = 0,
+		None = 1,
+		UserDisconnected = 2,
+		DeviceDisconnected = 3,
+		ServiceStopped = 4,
+		IpConfigInvalid = 5,
+		ConnectTimeout = 6,
+		ServiceStartTimeout = 7,
+		ServiceStartFailed = 8,
+		NoSecrets = 9,
+		LoginFailed = 10,
+		ConnectionRemoved = 11,
+		DependencyFailed = 12,
+		DeviceRealizeFailed = 13,
+		DeviceRemoved = 14
+	};
+	Q_ENUM(Enum);
+	Q_INVOKABLE static QString toString(NMNetworkStateReason::Enum reason);
 };
 
 ///! The backend supplying the Network service.
@@ -105,15 +135,20 @@ private:
 class Network: public QObject {
 	Q_OBJECT;
 	QML_ELEMENT;
-	QML_UNCREATABLE("BaseNetwork can only be aqcuired through network devices");
+	QML_UNCREATABLE("Network can only be aqcuired through networking devices");
 
 	// clang-format off
 	/// The name of the network.
 	Q_PROPERTY(QString name READ name CONSTANT);
+	/// The connnection settings profile for this network.
+	QSDOC_TYPE_OVERRIDE(ObjectModel<qs::network::NMConnection>*);
+	Q_PROPERTY(UntypedObjectModel* nmConnections READ nmConnections CONSTANT);
 	/// True if the network is connected.
 	Q_PROPERTY(bool connected READ default NOTIFY connectedChanged BINDABLE bindableConnected);
 	/// The connectivity state of the network.
 	Q_PROPERTY(NetworkState::Enum state READ default NOTIFY stateChanged BINDABLE bindableState);
+	/// A specific reason for the connection state. Only available for the NetworkManager backend.
+	Q_PROPERTY(NMNetworkStateReason::Enum stateReason READ default NOTIFY stateReasonChanged BINDABLE bindableStateReason);
 	/// If the network is currently connecting or disconnecting. Shorthand for checking @@state.
 	Q_PROPERTY(bool stateChanging READ default NOTIFY stateChangingChanged BINDABLE bindableStateChanging);
 	// clang-format on
@@ -121,22 +156,32 @@ class Network: public QObject {
 public:
 	explicit Network(QString name, QObject* parent = nullptr);
 
+	void connectionAdded(NMConnection* conn);
+	void connectionRemoved(NMConnection* conn);
+
 	[[nodiscard]] QString name() const { return this->mName; };
+	[[nodiscard]] ObjectModel<NMConnection>* nmConnections() { return &this->mNmConnections; };
 	QBindable<bool> bindableConnected() { return &this->bConnected; }
 	QBindable<NetworkState::Enum> bindableState() { return &this->bState; }
+	QBindable<NMNetworkStateReason::Enum> bindableStateReason() { return &this->bStateReason; }
 	QBindable<bool> bindableStateChanging() { return &this->bStateChanging; }
 
 signals:
 	void connectedChanged();
 	void stateChanged();
+	void stateReasonChanged();
 	void stateChangingChanged();
 
 protected:
 	QString mName;
+	ObjectModel<NMConnection> mNmConnections {this};
 
+	// clang-format off
 	Q_OBJECT_BINDABLE_PROPERTY(Network, bool, bConnected, &Network::connectedChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(Network, NetworkState::Enum, bState, &Network::stateChanged);
+	Q_OBJECT_BINDABLE_PROPERTY(Network, NMNetworkStateReason::Enum, bStateReason, &Network::stateReasonChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(Network, bool, bStateChanging, &Network::stateChangingChanged);
+	// clang-format on
 };
 
 } // namespace qs::network

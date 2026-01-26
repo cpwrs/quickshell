@@ -10,6 +10,7 @@
 #include "../../dbus/properties.hpp"
 #include "connection.hpp"
 #include "dbus_nm_device.h"
+#include "types.hpp"
 
 namespace qs::dbus {
 
@@ -73,6 +74,7 @@ private:
 	void registerConnection(const QString& path);
 
 	QHash<QString, NMConnectionSettings*> mConnections;
+	QHash<QString, NMConnection*> mFrontendConnections;
 	NMActiveConnection* mActiveConnection = nullptr;
 
 	// clang-format off

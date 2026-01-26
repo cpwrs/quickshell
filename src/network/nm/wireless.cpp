@@ -22,7 +22,6 @@
 #include "accesspoint.hpp"
 #include "connection.hpp"
 #include "dbus_nm_wireless.h"
-#include "dbus_types.hpp"
 #include "device.hpp"
 #include "enums.hpp"
 #include "utils.hpp"
@@ -39,7 +38,7 @@ NMWirelessNetwork::NMWirelessNetwork(QString ssid, QObject* parent)
     , mSsid(std::move(ssid))
     , bKnown(false)
     , bSecurity(WifiSecurityType::Unknown)
-    , bReason(NMConnectionStateReason::None)
+    , bReason(NMNetworkStateReason::None)
     , bState(NMConnectionState::Deactivated) {}
 
 void NMWirelessNetwork::updateReferenceConnection() {
@@ -126,9 +125,11 @@ void NMWirelessNetwork::addAccessPoint(NMAccessPoint* ap) {
 void NMWirelessNetwork::addConnection(NMConnectionSettings* conn) {
 	if (this->mConnections.contains(conn->path())) return;
 	this->mConnections.insert(conn->path(), conn);
+	this->registerFrontendConnection(conn);
 	auto onDestroyed = [this, conn]() {
 		if (this->mConnections.take(conn->path())) {
 			this->updateReferenceConnection();
+			this->removeFrontendConnection(conn);
 			if (this->mConnections.isEmpty()) this->bKnown = false;
 			if (this->mAccessPoints.isEmpty() && this->mConnections.isEmpty()) emit this->disappeared();
 		}
@@ -141,6 +142,20 @@ void NMWirelessNetwork::addConnection(NMConnectionSettings* conn) {
 	this->updateReferenceConnection();
 };
 
+void NMWirelessNetwork::registerFrontendConnection(NMConnectionSettings* conn) {
+	auto* frontendConn = new NMConnection(conn);
+	this->mFrontendConnections.insert(conn->path(), frontendConn);
+	emit this->connectionAdded(frontendConn);
+}
+
+void NMWirelessNetwork::removeFrontendConnection(NMConnectionSettings* conn) {
+	auto* frontendConn = this->mFrontendConnections.take(conn->path());
+	if (frontendConn) {
+		emit this->connectionRemoved(frontendConn);
+		frontendConn->deleteLater();
+	}
+}
+
 void NMWirelessNetwork::addActiveConnection(NMActiveConnection* active) {
 	if (this->mActiveConnection) return;
 	this->mActiveConnection = active;
@@ -151,7 +166,7 @@ void NMWirelessNetwork::addActiveConnection(NMActiveConnection* active) {
 			this->mActiveConnection = nullptr;
 			this->updateReferenceConnection();
 			this->bState = NMConnectionState::Deactivated;
-			this->bReason = NMConnectionStateReason::None;
+			this->bReason = NMNetworkStateReason::None;
 		}
 	};
 	QObject::connect(active, &NMActiveConnection::destroyed, this, onDestroyed);
@@ -385,7 +400,7 @@ void NMWirelessDevice::registerFrontendNetwork(NMWirelessNetwork* net) {
 	frontendNet->bindableSignalStrength().setBinding(translateSignal);
 	frontendNet->bindableConnected().setBinding(translateState);
 	frontendNet->bindableKnown().setBinding([net]() { return net->known(); });
-	frontendNet->bindableNmReason().setBinding([net]() { return net->reason(); });
+	frontendNet->bindableStateReason().setBinding([net]() { return net->reason(); });
 	frontendNet->bindableSecurity().setBinding([net]() { return net->security(); });
 	frontendNet->bindableState().setBinding([net]() {
 		return static_cast<NetworkState::Enum>(net->state());
@@ -408,14 +423,16 @@ void NMWirelessDevice::registerFrontendNetwork(NMWirelessNetwork* net) {
 		}
 	});
 
-	QObject::connect(
-	    frontendNet,
-	    &WifiNetwork::requestDisconnect,
-	    this,
-	    &NMWirelessDevice::disconnect
-	);
-
+	// clang-format off
+	QObject::connect(frontendNet, &WifiNetwork::requestDisconnect, this, &NMWirelessDevice::disconnect);
 	QObject::connect(frontendNet, &WifiNetwork::requestForget, net, &NMWirelessNetwork::forget);
+	QObject::connect(net, &NMWirelessNetwork::connectionAdded, frontendNet, &WifiNetwork::connectionAdded);
+	QObject::connect(net, &NMWirelessNetwork::connectionRemoved, frontendNet, &WifiNetwork::connectionRemoved);
+	// clang-format on
+
+	for (NMConnection* frontendConn : net->frontendConnections()) {
+		emit frontendNet->connectionAdded(frontendConn);
+	};
 
 	this->mFrontendNetworks.insert(ssid, frontendNet);
 	emit this->networkAdded(frontendNet);

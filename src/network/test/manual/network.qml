@@ -107,6 +107,7 @@ FloatingWindow {
 									Layout.fillWidth: true
 									RowLayout {
 										Label { text: modelData.name; font.bold: true }
+										Label { text: modelData.nmConnections.rowCount(); font.bold: true }
 										Label {
 											text: modelData.known ? "Known" : ""
 											color: palette.placeholderText
@@ -122,10 +123,10 @@ FloatingWindow {
 											color: palette.placeholderText
 										}
 									}
-									Label {
-										visible: Networking.backend == NetworkBackendType.NetworkManager && (modelData.nmReason != NMConnectionStateReason.Unknown && modelData.nmReason != NMConnectionStateReason.None)
-										text: `Connection change reason: ${NMConnectionStateReason.toString(modelData.nmReason)}`
-									}
+									// Label {
+									// visible: Networking.backend == NetworkBackendType.NetworkManager && (modelData.nmReason != NMConnectionStateReason.Unknown && modelData.nmReason != NMConnectionStateReason.None)
+									// text: `Connection change reason: ${NMConnectionStateReason.toString(modelData.nmReason)}`
+									// }
 								}
 								RowLayout {
 									Layout.alignment: Qt.AlignRight

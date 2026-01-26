@@ -153,4 +153,6 @@ public:
 	Q_ENUM(Enum);
 };
 
+
+
 } // namespace qs::network

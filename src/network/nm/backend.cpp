@@ -19,7 +19,6 @@
 #include "../wifi.hpp"
 #include "dbus_nm_backend.h"
 #include "dbus_nm_device.h"
-#include "dbus_types.hpp"
 #include "device.hpp"
 #include "enums.hpp"
 #include "wireless.hpp"
