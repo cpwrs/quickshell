@@ -224,6 +224,15 @@ WifiSecurityType::Enum findBestWirelessSecurity(
 	return WifiSecurityType::Unknown;
 }
 
+ConnectionSettingsMap
+mergeSettingsMaps(const ConnectionSettingsMap& target, const ConnectionSettingsMap& source) {
+	ConnectionSettingsMap result = target;
+	for (auto iter = source.constBegin(); iter != source.constEnd(); ++iter) {
+		result[iter.key()].insert(iter.value());
+	}
+	return result;
+}
+
 // NOLINTBEGIN
 QDateTime clockBootTimeToDateTime(qint64 clockBootTime) {
 	clockid_t clkId = CLOCK_BOOTTIME;

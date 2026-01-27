@@ -40,6 +40,8 @@ WifiSecurityType::Enum findBestWirelessSecurity(
     NM80211ApSecurityFlags::Enum apRsn
 );
 
+ConnectionSettingsMap mergeSettingsMaps(const ConnectionSettingsMap& target, const ConnectionSettingsMap& source);
+
 QDateTime clockBootTimeToDateTime(qint64 clockBootTime);
 
 } // namespace qs::network

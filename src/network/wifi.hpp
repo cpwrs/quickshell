@@ -78,9 +78,6 @@ public:
 	explicit WifiNetwork(QString ssid, QObject* parent = nullptr);
 
 	/// Attempt to connect to the wifi network.
-	///
-	/// > [!WARNING] Quickshell does not yet provide a NetworkManager authentication agent,
-	/// > meaning another agent will need to be active to enter passwords for unsaved networks.
 	Q_INVOKABLE void connect();
 	/// Disconnect from the wifi network.
 	Q_INVOKABLE void disconnect();

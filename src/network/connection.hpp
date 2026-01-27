@@ -1,7 +1,11 @@
 #pragma once
 
 #include <qobject.h>
+#include <qproperty.h>
 #include <qqmlintegration.h>
+#include <qtypes.h>
+
+#include "nm/types.hpp"
 
 namespace qs::network {
 
@@ -11,20 +15,32 @@ class NMConnection: public QObject {
 	QML_ELEMENT;
 	QML_UNCREATABLE("");
 
+	// clang-format off
+	/// A settings map describing this network configuration, including secrets.
+	Q_PROPERTY(ConnectionSettingsMap settings READ settings WRITE writeSettings NOTIFY settingsChanged);
+	// clang-format on
+
 public:
 	explicit NMConnection(QObject* parent = nullptr);
+	/// Clear the secrets belonging to this connection.
+	Q_INVOKABLE void clearSecrets();
+	/// Delete the connection.
+	Q_INVOKABLE void forget();
 
-	/// Get the settings maps describing this network configuration.
-	/// This will never include any secrets required for connection to the network.
-	// Q_INVOKABLE QMap<QString, QVariantMap> getSettings();
-	/// Get the secrets belonging to this network configuration.
-	/// Only secrets from persistent storage or a running secret agent will be returned.
-	/// The user will never be prompted for secrets as a result of this request.
-	// Q_INVOKABLE QMap<QString, QVariantMap> getSecrets();
-	/// Update the connection with new settings and properties and save the connection to disk.
-	/// Secrets may be a part of the update request, and will be stored in persistent storage
-	/// depending on the presence of a secret agent and the flags associated with each secret.
-	// Q_INVOKABLE void updateSettings(QMap<QString, QVariantMap>);
+	QBindable<ConnectionSettingsMap> bindableSettings() { return &this->bSettings; }
+	QBindable<ConnectionSettingsMap> bindableSecrets() { return &this->bSecrets; }
+
+signals:
+	void requestUpdateSettings(ConnectionSettingsMap settings);
+	void requestClearSecrets();
+	void requestForget();
+	void settingsChanged();
+	void secretsChanged();
+
+private:
+	// clang-format off
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, ConnectionSettingsMap, bSettings, &NMConnection::settingsChanged);
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, ConnectionSettingsMap, bSecrets, &NMConnection::secretsChanged);
+	// clang-format on
 };
-
 } // namespace qs::network

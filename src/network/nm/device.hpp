@@ -65,6 +65,7 @@ signals:
 public slots:
 	void disconnect();
 	void setAutoconnect(bool autoconnect);
+	void setManaged(bool managed);
 
 private slots:
 	void onAvailableConnectionPathsChanged(const QList<QDBusObjectPath>& paths);

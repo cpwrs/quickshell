@@ -14,8 +14,6 @@
 
 #include "../../core/logcat.hpp"
 #include "../../dbus/properties.hpp"
-#include "../connection.hpp"
-#include "../wifi.hpp"
 #include "dbus_nm_active_connection.h"
 #include "dbus_nm_connection_settings.h"
 #include "enums.hpp"
@@ -47,33 +45,86 @@ NMConnectionSettings::NMConnectionSettings(const QString& path, QObject* parent)
 	    this->proxy,
 	    &DBusNMConnectionSettingsProxy::Updated,
 	    this,
-	    &NMConnectionSettings::updateSettings
+	    &NMConnectionSettings::sync
 	);
 	this->bSecurity.setBinding([this]() { return securityFromConnectionSettings(this->bSettings); });
 
 	this->connectionSettingsProperties.setInterface(this->proxy);
 	this->connectionSettingsProperties.updateAllViaGetAll();
 
-	this->updateSettings();
+	this->sync();
 }
 
-void NMConnectionSettings::updateSettings() {
-	auto pending = this->proxy->GetSettings();
+void NMConnectionSettings::sync() {
+	auto settingsPending = this->proxy->GetSettings();
+	auto secretsPending = this->proxy->GetSecrets("");
+	auto* settingsCall = new QDBusPendingCallWatcher(settingsPending, this);
+	auto* secretsCall = new QDBusPendingCallWatcher(secretsPending, this);
+
+	ConnectionSettingsMap settings;
+	ConnectionSettingsMap secrets;
+
+	auto maybeEmitLoaded = [this, settingsCall, secretsCall, settings, secrets]() mutable {
+		if (settingsCall->isFinished() && secretsCall->isFinished() && !this->mLoaded) {
+			this->bSettings = mergeSettingsMaps(settings, secrets);
+			emit this->loaded();
+			this->mLoaded = true;
+			delete settingsCall;
+			delete secretsCall;
+		}
+	};
+
+	auto settingsCallback =
+	    [this, &settings, maybeEmitLoaded](QDBusPendingCallWatcher* call) mutable {
+		    const QDBusPendingReply<ConnectionSettingsMap> reply = *call;
+		    if (reply.isError()) {
+			    qCWarning(logNetworkManager)
+			        << "Failed to get" << this->path() << "settings:" << reply.error().message();
+		    } else {
+			    settings = reply.value();
+		    }
+		    maybeEmitLoaded();
+	    };
+
+	auto secretsCallback = [&secrets, maybeEmitLoaded](QDBusPendingCallWatcher* call) mutable {
+		const QDBusPendingReply<ConnectionSettingsMap> reply = *call;
+		if (!reply.isError()) {
+			secrets = reply.value();
+		}
+		maybeEmitLoaded();
+	};
+
+	QObject::connect(settingsCall, &QDBusPendingCallWatcher::finished, this, settingsCallback);
+	QObject::connect(secretsCall, &QDBusPendingCallWatcher::finished, this, secretsCallback);
+}
+
+void NMConnectionSettings::updateSettings(const ConnectionSettingsMap& settings) {
+	auto pending = this->proxy->Update(settings);
 	auto* call = new QDBusPendingCallWatcher(pending, this);
 
 	auto responseCallback = [this](QDBusPendingCallWatcher* call) {
-		const QDBusPendingReply<ConnectionSettingsMap> reply = *call;
+		const QDBusPendingReply<> reply = *call;
 
 		if (reply.isError()) {
 			qCWarning(logNetworkManager)
-			    << "Failed to get" << this->path() << "settings:" << reply.error().message();
-		} else {
-			this->bSettings = reply.value();
+			    << "Failed to update settings for" << this->path() << ":" << reply.error().message();
 		}
+		delete call;
+	};
 
-		if (!this->mLoaded) {
-			emit this->loaded();
-			this->mLoaded = true;
+	QObject::connect(call, &QDBusPendingCallWatcher::finished, this, responseCallback);
+}
+
+void NMConnectionSettings::clearSecrets() {
+	auto pending = this->proxy->ClearSecrets();
+	auto* call = new QDBusPendingCallWatcher(pending, this);
+
+	auto responseCallback = [this](QDBusPendingCallWatcher* call) {
+		const QDBusPendingReply<> reply = *call;
+
+		if (reply.isError()) {
+			qCWarning(logNetworkManager)
+			    << "Failed to clear secrets for" << this->path() << ":" << reply.error().message();
 		}
 		delete call;
 	};

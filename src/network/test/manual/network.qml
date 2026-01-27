@@ -107,7 +107,6 @@ FloatingWindow {
 									Layout.fillWidth: true
 									RowLayout {
 										Label { text: modelData.name; font.bold: true }
-										Label { text: modelData.nmConnections.rowCount(); font.bold: true }
 										Label {
 											text: modelData.known ? "Known" : ""
 											color: palette.placeholderText

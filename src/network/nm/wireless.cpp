@@ -159,6 +159,7 @@ void NMWirelessNetwork::removeFrontendConnection(NMConnectionSettings* conn) {
 void NMWirelessNetwork::addActiveConnection(NMActiveConnection* active) {
 	if (this->mActiveConnection) return;
 	this->mActiveConnection = active;
+
 	this->bState.setBinding([active]() { return active->state(); });
 	this->bReason.setBinding([active]() { return active->stateReason(); });
 	auto onDestroyed = [this, active]() {
@@ -430,7 +431,7 @@ void NMWirelessDevice::registerFrontendNetwork(NMWirelessNetwork* net) {
 	QObject::connect(net, &NMWirelessNetwork::connectionRemoved, frontendNet, &WifiNetwork::connectionRemoved);
 	// clang-format on
 
-	for (NMConnection* frontendConn : net->frontendConnections()) {
+	for (NMConnection* frontendConn: net->frontendConnections()) {
 		emit frontendNet->connectionAdded(frontendConn);
 	};
 

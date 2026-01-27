@@ -37,6 +37,8 @@ public:
 	explicit NMConnectionSettings(const QString& path, QObject* parent = nullptr);
 
 	void forget();
+	void updateSettings(const ConnectionSettingsMap& settings);
+	void clearSecrets();
 
 	[[nodiscard]] bool isValid() const;
 	[[nodiscard]] QString path() const;
@@ -53,7 +55,7 @@ signals:
 
 private:
 	bool mLoaded = false;
-	void updateSettings();
+	void sync();
 	// clang-format off
 	Q_OBJECT_BINDABLE_PROPERTY(NMConnectionSettings, ConnectionSettingsMap, bSettings, &NMConnectionSettings::settingsChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(NMConnectionSettings, WifiSecurityType::Enum, bSecurity, &NMConnectionSettings::securityChanged);

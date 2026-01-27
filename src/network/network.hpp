@@ -141,6 +141,8 @@ class Network: public QObject {
 	/// The name of the network.
 	Q_PROPERTY(QString name READ name CONSTANT);
 	/// The connnection settings profile for this network.
+	///
+	/// > [!WARNING] Only valid for the NetworkManager backend. 
 	QSDOC_TYPE_OVERRIDE(ObjectModel<qs::network::NMConnection>*);
 	Q_PROPERTY(UntypedObjectModel* nmConnections READ nmConnections CONSTANT);
 	/// True if the network is connected.
