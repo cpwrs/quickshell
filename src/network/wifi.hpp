@@ -68,8 +68,6 @@ class WifiNetwork: public Network {
 	// clang-format off
 	/// The current signal strength of the network, from 0.0 to 1.0.
 	Q_PROPERTY(qreal signalStrength READ default NOTIFY signalStrengthChanged BINDABLE bindableSignalStrength);
-	/// True if the wifi network has known connection settings saved.
-	Q_PROPERTY(bool known READ default NOTIFY knownChanged BINDABLE bindableKnown);
 	/// The security type of the wifi network.
 	Q_PROPERTY(WifiSecurityType::Enum security READ default NOTIFY securityChanged BINDABLE bindableSecurity);
 	// clang-format on
@@ -77,29 +75,16 @@ class WifiNetwork: public Network {
 public:
 	explicit WifiNetwork(QString ssid, QObject* parent = nullptr);
 
-	/// Attempt to connect to the wifi network.
-	Q_INVOKABLE void connect();
-	/// Disconnect from the wifi network.
-	Q_INVOKABLE void disconnect();
-	/// Forget all connection settings for this wifi network.
-	Q_INVOKABLE void forget();
-
 	QBindable<qreal> bindableSignalStrength() { return &this->bSignalStrength; }
-	QBindable<bool> bindableKnown() { return &this->bKnown; }
 	QBindable<WifiSecurityType::Enum> bindableSecurity() { return &this->bSecurity; }
 
 signals:
-	void requestConnect();
-	void requestDisconnect();
-	void requestForget();
 	void signalStrengthChanged();
-	void knownChanged();
 	void securityChanged();
 
 private:
 	// clang-format off
 	Q_OBJECT_BINDABLE_PROPERTY(WifiNetwork, qreal, bSignalStrength, &WifiNetwork::signalStrengthChanged);
-	Q_OBJECT_BINDABLE_PROPERTY(WifiNetwork, bool, bKnown, &WifiNetwork::knownChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(WifiNetwork, WifiSecurityType::Enum, bSecurity, &WifiNetwork::securityChanged);
 	// clang-format on
 };

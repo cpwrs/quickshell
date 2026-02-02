@@ -43,6 +43,7 @@ public:
 	void registerFrontendConnection(NMConnectionSettings* conn);
 	void removeFrontendConnection(NMConnectionSettings* conn);
 	void addActiveConnection(NMActiveConnection* active);
+	void setDefaultConnection(NMConnection* frontendConn);
 	void forget();
 
 	[[nodiscard]] QString ssid() const { return this->mSsid; };
@@ -52,8 +53,11 @@ public:
 	[[nodiscard]] bool known() const { return this->bKnown; };
 	[[nodiscard]] NMNetworkStateReason::Enum reason() const { return this->bReason; };
 	[[nodiscard]] NMAccessPoint* referenceAp() const { return this->mReferenceAp; };
-	[[nodiscard]] NMConnectionSettings* referenceConnection() const { return this->mReferenceConn; };
 	[[nodiscard]] QList<NMAccessPoint*> accessPoints() const { return this->mAccessPoints.values(); };
+	[[nodiscard]] NMConnectionSettings* defaultConn() const { return this->mDefaultConnection; };
+	[[nodiscard]] NMConnection* defaultFrontendConn() const {
+		return this->bDefaultFrontendConnection;
+	};
 	[[nodiscard]] QList<NMConnectionSettings*> connections() const {
 		return this->mConnections.values();
 	}
@@ -68,6 +72,7 @@ signals:
 	void disappeared();
 	void connectionAdded(NMConnection* conn);
 	void connectionRemoved(NMConnection* conn);
+	void defaultFrontendConnectionChanged(NMConnection* conn);
 	void visibilityChanged(bool visible);
 	void signalStrengthChanged(quint8 signal);
 	void stateChanged(NMConnectionState::Enum state);
@@ -79,17 +84,18 @@ signals:
 
 private:
 	void updateReferenceAp();
-	void updateReferenceConnection();
+	void updateDefaultConnection();
 
 	QString mSsid;
 	QHash<QString, NMAccessPoint*> mAccessPoints;
 	QHash<QString, NMConnectionSettings*> mConnections;
 	QHash<QString, NMConnection*> mFrontendConnections;
 	NMAccessPoint* mReferenceAp = nullptr;
-	NMConnectionSettings* mReferenceConn = nullptr;
 	NMActiveConnection* mActiveConnection = nullptr;
+	NMConnectionSettings* mDefaultConnection = nullptr;
 
 	// clang-format off
+	Q_OBJECT_BINDABLE_PROPERTY(NMWirelessNetwork, NMConnection*, bDefaultFrontendConnection, &NMWirelessNetwork::defaultFrontendConnectionChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(NMWirelessNetwork, bool, bVisible, &NMWirelessNetwork::visibilityChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(NMWirelessNetwork, bool, bKnown, &NMWirelessNetwork::knownChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(NMWirelessNetwork, WifiSecurityType::Enum, bSecurity, &NMWirelessNetwork::securityChanged);

@@ -14,10 +14,6 @@
 
 namespace qs::network {
 
-namespace {
-QS_LOGGING_CATEGORY(logWifi, "quickshell.network.wifi", QtWarningMsg);
-} // namespace
-
 QString WifiSecurityType::toString(WifiSecurityType::Enum type) {
 	switch (type) {
 	case Unknown: return QStringLiteral("Unknown");
@@ -48,26 +44,6 @@ QString WifiDeviceMode::toString(WifiDeviceMode::Enum mode) {
 }
 
 WifiNetwork::WifiNetwork(QString ssid, QObject* parent): Network(std::move(ssid), parent) {};
-
-void WifiNetwork::connect() {
-	if (this->bConnected) {
-		qCCritical(logWifi) << this << "is already connected.";
-		return;
-	}
-
-	this->requestConnect();
-}
-
-void WifiNetwork::disconnect() {
-	if (!this->bConnected) {
-		qCCritical(logWifi) << this << "is not currently connected";
-		return;
-	}
-
-	this->requestDisconnect();
-}
-
-void WifiNetwork::forget() { this->requestForget(); }
 
 WifiDevice::WifiDevice(QObject* parent): NetworkDevice(DeviceType::Wifi, parent) {};
 

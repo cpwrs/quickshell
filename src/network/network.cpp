@@ -93,6 +93,32 @@ Network::Network(QString name, QObject* parent): QObject(parent), mName(std::mov
 	});
 };
 
+void Network::setNmDefaultConnection(NMConnection* conn) {
+	if (this->bNmDefaultConnection == conn) return;
+	if (!this->mNmConnections.valueList().contains(conn)) return;
+	emit this->requestSetNmDefaultConnection(conn);
+}
+
+void Network::connect() {
+	if (this->bConnected) {
+		qCCritical(logNetwork) << this << "is already connected.";
+		return;
+	}
+
+	this->requestConnect();
+}
+
+void Network::disconnect() {
+	if (!this->bConnected) {
+		qCCritical(logNetwork) << this << "is not currently connected";
+		return;
+	}
+
+	this->requestDisconnect();
+}
+
+void Network::forget() { this->requestForget(); }
+
 void Network::connectionAdded(NMConnection* conn) { this->mNmConnections.insertObject(conn); }
 void Network::connectionRemoved(NMConnection* conn) { this->mNmConnections.removeObject(conn); }
 
