@@ -8,6 +8,7 @@
 #include <qtypes.h>
 
 #include "../../dbus/properties.hpp"
+#include "../network.hpp"
 #include "connection.hpp"
 #include "dbus_nm_device.h"
 #include "types.hpp"

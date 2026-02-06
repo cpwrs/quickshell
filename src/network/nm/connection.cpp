@@ -14,7 +14,7 @@
 
 #include "../../core/logcat.hpp"
 #include "../../dbus/properties.hpp"
-#include "../network.hpp"
+#include "../enums.hpp"
 #include "dbus_nm_active_connection.h"
 #include "dbus_nm_connection_settings.h"
 #include "enums.hpp"
@@ -99,6 +99,12 @@ void NMConnectionSettings::getSecrets() {
 	};
 
 	QObject::connect(call, &QDBusPendingCallWatcher::finished, this, responseCallback);
+}
+
+void NMConnectionSettings::setWifiPsk(const QString& psk) {
+	auto newSettings = ConnectionSettingsMap();
+	newSettings["802-11-wireless-security"]["psk"] = psk;
+	this->updateSettings(newSettings);
 }
 
 void NMConnectionSettings::updateSettings(const ConnectionSettingsMap& settings) {

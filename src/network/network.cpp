@@ -6,58 +6,40 @@
 #include <qobject.h>
 #include <qstring.h>
 #include <qtmetamacros.h>
+#include <qdebug.h>
 
 #include "../core/logcat.hpp"
-#include "connection.hpp"
 #include "device.hpp"
+#include "enums.hpp"
 #include "nm/backend.hpp"
+#include "nm/types.hpp"
 
 namespace qs::network {
 
 namespace {
 QS_LOGGING_CATEGORY(logNetwork, "quickshell.network", QtWarningMsg);
-} // namespace
+QS_LOGGING_CATEGORY(logConnection, "quickshell.network.connection", QtWarningMsg);
 
-QString NetworkState::toString(NetworkState::Enum state) {
-	switch (state) {
-	case NetworkState::Connecting: return QStringLiteral("Connecting");
-	case NetworkState::Connected: return QStringLiteral("Connected");
-	case NetworkState::Disconnecting: return QStringLiteral("Disconnecting");
-	case NetworkState::Disconnected: return QStringLiteral("Disconnected");
-	default: return QStringLiteral("Unknown");
+bool wpaPskIsValid(const QString& psk) {
+	if (psk.isEmpty()) return false;
+	const auto psklen = psk.length();
+
+	// ASCII passphrase
+	if (psklen < 8 || psklen > 64) return false;
+
+	// Hex PSK
+	if (psklen == 64) {
+		for (int i = 0; i < psklen; ++i) {
+			if (!psk.at(i).isLetterOrNumber()) {
+				return false;
+			}
+		}
 	}
+
+	return true;
 }
 
-QString NMNetworkStateReason::toString(NMNetworkStateReason::Enum reason) {
-	switch (reason) {
-	case Unknown: return QStringLiteral("Unknown");
-	case None: return QStringLiteral("No reason");
-	case UserDisconnected: return QStringLiteral("User disconnection");
-	case DeviceDisconnected:
-		return QStringLiteral("The device the connection was using was disconnected.");
-	case ServiceStopped:
-		return QStringLiteral("The service providing the VPN connection was stopped.");
-	case IpConfigInvalid:
-		return QStringLiteral("The IP config of the active connection was invalid.");
-	case ConnectTimeout:
-		return QStringLiteral("The connection attempt to the VPN service timed out.");
-	case ServiceStartTimeout:
-		return QStringLiteral(
-		    "A timeout occurred while starting the service providing the VPN connection."
-		);
-	case ServiceStartFailed:
-		return QStringLiteral("Starting the service providing the VPN connection failed.");
-	case NoSecrets: return QStringLiteral("Necessary secrets for the connection were not provided.");
-	case LoginFailed: return QStringLiteral("Authentication to the server failed.");
-	case ConnectionRemoved:
-		return QStringLiteral("Necessary secrets for the connection were not provided.");
-	case DependencyFailed:
-		return QStringLiteral("Master connection of this connection failed to activate.");
-	case DeviceRealizeFailed: return QStringLiteral("Could not create the software device link.");
-	case DeviceRemoved: return QStringLiteral("The device this connection depended on disappeared.");
-	default: return QStringLiteral("Unknown");
-	};
-};
+} // namespace
 
 Networking::Networking(QObject* parent): QObject(parent) {
 	// Try to create the NetworkManager backend and bind to it.
@@ -85,6 +67,28 @@ void Networking::deviceRemoved(NetworkDevice* dev) { this->mDevices.removeObject
 void Networking::setWifiEnabled(bool enabled) {
 	if (this->bWifiEnabled == enabled) return;
 	emit this->requestSetWifiEnabled(enabled);
+}
+
+NMConnection::NMConnection(QObject* parent): QObject(parent) {}
+
+void NMConnection::updateSettings(const ConnectionSettingsMap& settings) {
+	emit this->requestUpdateSettings(settings);
+}
+
+void NMConnection::clearSecrets() { emit this->requestClearSecrets(); }
+
+void NMConnection::forget() { emit this->requestForget(); }
+
+void NMConnection::setWifiPsk(const QString& psk) {
+	if (this->bWifiSecurity != WifiSecurityType::WpaPsk
+	    && this->bWifiSecurity != WifiSecurityType::Wpa2Psk)
+	{
+		return;
+	}
+	if (!wpaPskIsValid(psk)) {
+		qCWarning(logConnection) << "Malformed PSK provided to" << this;
+	}
+	emit this->requestSetWifiPsk(psk);
 }
 
 Network::Network(QString name, QObject* parent): QObject(parent), mName(std::move(name)) {
@@ -141,3 +145,16 @@ void NMConnectionContext::setNetwork(Network* network) {
 }
 
 } // namespace qs::network
+
+QDebug operator<<(QDebug debug, const qs::network::NMConnection* connection) {
+	auto saver = QDebugStateSaver(debug);
+
+	if (connection) {
+		debug.nospace() << "NMConnection(" << static_cast<const void*>(connection)
+		                << ", id=" << connection->id() << ")";
+	} else {
+		debug << "NMConnection(nullptr)";
+	}
+
+	return debug;
+}

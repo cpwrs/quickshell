@@ -7,57 +7,11 @@
 #include <qtypes.h>
 
 #include "../core/model.hpp"
-#include "connection.hpp"
 #include "device.hpp"
+#include "enums.hpp"
+#include "nm/types.hpp"
 
 namespace qs::network {
-
-///! The connection state of a Network.
-class NetworkState: public QObject {
-	Q_OBJECT;
-	QML_ELEMENT;
-	QML_SINGLETON;
-
-public:
-	enum Enum : quint8 {
-		Unknown = 0,
-		Connecting = 1,
-		Connected = 2,
-		Disconnecting = 3,
-		Disconnected = 4,
-	};
-	Q_ENUM(Enum);
-	Q_INVOKABLE static QString toString(NetworkState::Enum state);
-};
-
-///! The reason for the NMConnectionState of an NMConnection.
-/// In sync with https://networkmanager.dev/docs/api/latest/nm-dbus-types.html#NMActiveConnectionStateReason.
-class NMNetworkStateReason: public QObject {
-	Q_OBJECT;
-	QML_ELEMENT;
-	QML_SINGLETON;
-
-public:
-	enum Enum : quint8 {
-		Unknown = 0,
-		None = 1,
-		UserDisconnected = 2,
-		DeviceDisconnected = 3,
-		ServiceStopped = 4,
-		IpConfigInvalid = 5,
-		ConnectTimeout = 6,
-		ServiceStartTimeout = 7,
-		ServiceStartFailed = 8,
-		NoSecrets = 9,
-		LoginFailed = 10,
-		ConnectionRemoved = 11,
-		DependencyFailed = 12,
-		DeviceRealizeFailed = 13,
-		DeviceRemoved = 14
-	};
-	Q_ENUM(Enum);
-	Q_INVOKABLE static QString toString(NMNetworkStateReason::Enum reason);
-};
 
 ///! The backend supplying the Network service.
 class NetworkBackendType: public QObject {
@@ -128,6 +82,64 @@ private:
 	// clang-format off
 	Q_OBJECT_BINDABLE_PROPERTY(Networking, bool, bWifiEnabled, &Networking::wifiEnabledChanged);
 	Q_OBJECT_BINDABLE_PROPERTY(Networking, bool, bWifiHardwareEnabled, &Networking::wifiHardwareEnabledChanged);
+	// clang-format on
+};
+
+///! A NetworkManager connection settings profile.
+class NMConnection: public QObject {
+	Q_OBJECT;
+	QML_ELEMENT;
+	QML_UNCREATABLE("");
+
+	// clang-format off
+	/// A settings map describing this network configuration.
+	Q_PROPERTY(ConnectionSettingsMap settings READ default NOTIFY settingsChanged BINDABLE bindableSettings);
+	/// A settings map describing the secrets belonging to this network configuration.
+	Q_PROPERTY(ConnectionSettingsMap secretSettings READ default NOTIFY secretSettingsChanged BINDABLE bindableSecretSettings);
+	/// A human readable unique identifier for the connection.
+	Q_PROPERTY(QString id READ default NOTIFY idChanged BINDABLE bindableId);
+	/// The wifi security type of the connection.
+	///
+	/// > [!NOTE] This is only valid for connections to a @@Quickshell.Networking.WifiNetwork
+	Q_PROPERTY(WifiSecurityType::Enum wifiSecurity READ default NOTIFY wifiSecurityChanged BINDABLE bindableWifiSecurity);
+	// clang-format on
+
+public:
+	explicit NMConnection(QObject* parent = nullptr);
+	/// Attempt to update the connection with new settings and save the connection to disk. Secrets may be a part of the update request,
+	/// and will either be stored in persistent storage tor sent to a Secret Agent for storage, depending on the flags
+	/// associated with each secret and the presence of a registered Secret Agent.
+	Q_INVOKABLE void updateSettings(const ConnectionSettingsMap& settings);
+	/// Attempt to clear all of the secrets belonging to this connection.
+	Q_INVOKABLE void clearSecrets();
+	/// Delete the connection.
+	Q_INVOKABLE void forget();
+	/// Set the Pre-Shared-Key secret setting for a connection whos @@wifiSecurity is either
+	/// @@Quickshell.Networking.WifiSecurityType.WpaPsk or @@Quickshell.Networking.WifiSecurityType.Wpa2Psk.
+	Q_INVOKABLE void setWifiPsk(const QString& psk);
+
+	QBindable<ConnectionSettingsMap> bindableSettings() { return &this->bSettings; }
+	QBindable<ConnectionSettingsMap> bindableSecretSettings() { return &this->bSecretSettings; }
+	QBindable<QString> bindableId() { return &this->bId; }
+	[[nodiscard]] QString id() const { return this->bId; }
+	QBindable<WifiSecurityType::Enum> bindableWifiSecurity() { return &this->bWifiSecurity; }
+
+signals:
+	void requestUpdateSettings(ConnectionSettingsMap settings);
+	void requestClearSecrets();
+	void requestForget();
+	void requestSetWifiPsk(const QString& psk);
+	void settingsChanged();
+	void secretSettingsChanged();
+	void idChanged();
+	void wifiSecurityChanged();
+
+private:
+	// clang-format off
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, ConnectionSettingsMap, bSettings, &NMConnection::settingsChanged);
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, ConnectionSettingsMap, bSecretSettings, &NMConnection::secretSettingsChanged);
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, QString, bId, &NMConnection::idChanged);
+	Q_OBJECT_BINDABLE_PROPERTY(NMConnection, WifiSecurityType::Enum, bWifiSecurity, &NMConnection::wifiSecurityChanged);
 	// clang-format on
 };
 
@@ -249,3 +261,5 @@ private:
 };
 
 } // namespace qs::network
+
+QDebug operator<<(QDebug debug, const qs::network::NMConnection* connection);

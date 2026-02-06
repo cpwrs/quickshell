@@ -9,8 +9,7 @@
 #include <qtypes.h>
 
 #include "../../dbus/properties.hpp"
-#include "../network.hpp"
-#include "../wifi.hpp"
+#include "../enums.hpp"
 #include "dbus_nm_active_connection.h"
 #include "dbus_nm_connection_settings.h"
 #include "enums.hpp"
@@ -39,6 +38,7 @@ public:
 	void forget();
 	void updateSettings(const ConnectionSettingsMap& settings);
 	void clearSecrets();
+	void setWifiPsk(const QString& psk);
 
 	[[nodiscard]] bool isValid() const;
 	[[nodiscard]] QString path() const;
